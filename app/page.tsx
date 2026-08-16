@@ -1,69 +1,166 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
 
 export default function Home() {
+  const [image, setImage] = useState<string | null>(null);
+
+  const handleFileChange = (file: File | undefined) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file.");
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    setImage(imageUrl);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-12">
+        
+        {/* Header */}
+        <header className="mb-16 text-center">
+          <div className="mb-4 inline-flex items-center rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-300">
+            AI-powered screenshot intelligence
+          </div>
+
+          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
+            Screenshot
+            <span className="text-blue-500"> → </span>
+            Action
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+            Turn passive screenshots into actionable information.
+            Upload a screenshot and let AI understand what needs to happen next.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        </header>
+
+        {/* Upload Area */}
+        <section className="mx-auto w-full max-w-3xl">
+          {!image ? (
+            <label
+              htmlFor="file-upload"
+              className="flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-700 bg-slate-900/60 p-10 text-center transition hover:border-blue-500 hover:bg-slate-900"
+            >
+              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-500/10 text-4xl">
+                📸
+              </div>
+
+              <h2 className="text-2xl font-semibold">
+                Drop your screenshot here
+              </h2>
+
+              <p className="mt-3 text-slate-400">
+                or click to browse from your computer
+              </p>
+
+              <span className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-medium transition hover:bg-blue-500">
+                Choose Screenshot
+              </span>
+
+              <input
+                id="file-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) =>
+                  handleFileChange(event.target.files?.[0])
+                }
+              />
+
+              <p className="mt-5 text-xs text-slate-500">
+                PNG, JPG, JPEG, WEBP
+              </p>
+            </label>
+          ) : (
+            <div className="rounded-3xl border border-slate-700 bg-slate-900 p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">
+                    Screenshot uploaded
+                  </h2>
+                  <p className="text-sm text-slate-400">
+                    Ready for AI analysis
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setImage(null)}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-950">
+                <img
+                  src={image}
+                  alt="Uploaded screenshot"
+                  className="max-h-[600px] w-full object-contain"
+                />
+              </div>
+
+              <button
+                className="mt-6 w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold transition hover:bg-blue-500"
+                onClick={() => alert("AI analysis will be connected next!")}
+              >
+                Analyze Screenshot →
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Feature Preview */}
+        <section className="mt-20 grid gap-5 sm:grid-cols-3">
+          <Feature
+            icon="🧠"
+            title="Understand"
+            description="AI analyzes the content and context of your screenshot."
+          />
+
+          <Feature
+            icon="⚡"
+            title="Extract"
+            description="Important tasks, events, deadlines and actions are identified."
+          />
+
+          <Feature
+            icon="✅"
+            title="Act"
+            description="Turn extracted information into useful actions."
+          />
+        </section>
+
+        <footer className="mt-auto pt-20 text-center text-sm text-slate-600">
+          Screenshot → Understand → Extract → Action
+        </footer>
+      </div>
+    </main>
+  );
+}
+
+function Feature({
+  icon,
+  title,
+  description,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <div className="mb-4 text-3xl">{icon}</div>
+
+      <h3 className="text-lg font-semibold">{title}</h3>
+
+      <p className="mt-2 text-sm leading-6 text-slate-400">
+        {description}
+      </p>
     </div>
   );
 }

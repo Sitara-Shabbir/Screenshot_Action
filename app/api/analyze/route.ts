@@ -53,6 +53,7 @@ Extract the most useful information.
 Return ONLY valid JSON in this exact structure:
 
 {
+  {
   "type": "TASK",
   "title": "",
   "description": "",
@@ -61,7 +62,9 @@ Return ONLY valid JSON in this exact structure:
   "source": "",
   "urgency": "low",
   "action": "",
+  "requiredItems": [],
   "confidence": 0
+}
 }
 
 Rules:
@@ -77,6 +80,10 @@ Rules:
 - confidence should be a number between 0 and 1.
 - If information is missing, use an empty string.
 - Do not invent information that is not supported by the screenshot.
+- requiredItems must be an array of strings.
+- Include requiredItems when the screenshot mentions things the user must bring, prepare, submit, attach, or complete.
+- If there are no required items, return an empty array.
+- confidence must reflect how clearly the screenshot supports the classification and extracted information.
           `,
         },
       ],

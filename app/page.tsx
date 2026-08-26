@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Task = {
   id: string;
@@ -27,21 +27,72 @@ type AnalysisResult = {
   requiredItems: string[];
 };
 
+const TASKS_STORAGE_KEY = "screenshot-action-tasks";
+
+function getTypeStyle(type: string): {
+  icon: string;
+  badge: string;
+} {
+  switch (type.toLowerCase()) {
+    case "event":
+      return {
+        icon: "📅",
+        badge:
+          "border-purple-500/30 bg-purple-500/10 text-purple-300",
+      };
+
+    case "deadline":
+      return {
+        icon: "⏰",
+        badge:
+          "border-red-500/30 bg-red-500/10 text-red-300",
+      };
+
+    case "reminder":
+      return {
+        icon: "🔔",
+        badge:
+          "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
+      };
+
+    case "message":
+      return {
+        icon: "💬",
+        badge:
+          "border-blue-500/30 bg-blue-500/10 text-blue-300",
+      };
+
+    case "task":
+      return {
+        icon: "✅",
+        badge:
+          "border-green-500/30 bg-green-500/10 text-green-300",
+      };
+
+    default:
+      return {
+        icon: "📌",
+        badge:
+          "border-slate-600 bg-slate-800 text-slate-200",
+      };
+  }
+}
+
 function DashboardField({
   label,
   value,
 }: {
   label: string;
   value: string;
-}) {
+}): React.ReactNode {
   return (
     <div>
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {label}
       </p>
 
-      <p className="mt-1 text-sm text-slate-200">
-        {value}
+      <p className="mt-1 text-sm leading-6 text-slate-200">
+        {value || "Not specified"}
       </p>
     </div>
   );
@@ -60,7 +111,7 @@ function ResultField({
         {label}
       </p>
 
-      <p className="mt-1 text-base text-slate-200">
+      <p className="mt-1 text-base leading-7 text-slate-200">
         {value || "Not detected"}
       </p>
     </div>
@@ -70,15 +121,23 @@ function ResultField({
 function StatCard({
   label,
   value,
+  icon,
 }: {
   label: string;
   value: number;
+  icon: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-      <p className="text-sm text-slate-400">
-        {label}
-      </p>
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-400">
+          {label}
+        </p>
+
+        <span className="text-xl">
+          {icon}
+        </span>
+      </div>
 
       <p className="mt-2 text-3xl font-bold text-white">
         {value}
@@ -97,7 +156,7 @@ function Feature({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 transition hover:border-slate-700 hover:bg-slate-900">
       <div className="mb-4 text-3xl">
         {icon}
       </div>
@@ -114,9 +173,11 @@ function Feature({
 }
 
 export default function Home() {
-  const [image, setImage] = useState<string | null>(null);
+  const [image, setImage] =
+    useState<string | null>(null);
 
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] =
+    useState<File | null>(null);
 
   const [result, setResult] =
     useState<AnalysisResult | null>(null);
@@ -133,45 +194,92 @@ export default function Home() {
   const [activePage, setActivePage] =
     useState<"home" | "actions">("home");
 
+  const [dragActive, setDragActive] =
+    useState(false);
+
+  const [taskAdded, setTaskAdded] =
+    useState(false);
+
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(null);
+
   // Load saved tasks
   useEffect(() => {
-    const savedTasks = localStorage.getItem(
-      "screenshot-action-tasks"
-    );
-
-    if (savedTasks) {
-      try {
-        setTasks(JSON.parse(savedTasks));
-      } catch (error) {
-        console.error(
-          "Could not load saved tasks:",
-          error
+    try {
+      const savedTasks =
+        localStorage.getItem(
+          TASKS_STORAGE_KEY
         );
+
+      if (savedTasks) {
+        const parsedTasks =
+          JSON.parse(savedTasks);
+
+        if (Array.isArray(parsedTasks)) {
+          setTasks(parsedTasks);
+        }
       }
+    } catch (error) {
+      console.error(
+        "Could not load saved tasks:",
+        error
+      );
     }
   }, []);
 
   // Save tasks whenever they change
   useEffect(() => {
-    localStorage.setItem(
-      "screenshot-action-tasks",
-      JSON.stringify(tasks)
-    );
+    try {
+      localStorage.setItem(
+        TASKS_STORAGE_KEY,
+        JSON.stringify(tasks)
+      );
+    } catch (error) {
+      console.error(
+        "Could not save tasks:",
+        error
+      );
+    }
   }, [tasks]);
+
+  // Clean up preview URL
+  useEffect(() => {
+    return () => {
+      if (image) {
+        URL.revokeObjectURL(image);
+      }
+    };
+  }, [image]);
 
   // Handle screenshot upload
   const handleFileChange = (
     selectedFile: File | undefined
   ) => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      return;
+    }
 
     if (!selectedFile.type.startsWith("image/")) {
-      setError("Please upload an image file.");
+      setError(
+        "Please upload a valid image file."
+      );
       return;
+    }
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      setError(
+        "Image is too large. Please upload an image smaller than 10 MB."
+      );
+      return;
+    }
+
+    if (image) {
+      URL.revokeObjectURL(image);
     }
 
     setError("");
     setResult(null);
+    setTaskAdded(false);
     setFile(selectedFile);
 
     const imageUrl =
@@ -180,13 +288,46 @@ export default function Home() {
     setImage(imageUrl);
   };
 
-  // Analyze screenshot
+  // Drag and drop
+  const handleDragOver = (
+    event: React.DragEvent<HTMLLabelElement>
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (
+    event: React.DragEvent<HTMLLabelElement>
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDrop = (
+    event: React.DragEvent<HTMLLabelElement>
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+
+    const droppedFile =
+      event.dataTransfer.files?.[0];
+
+    handleFileChange(droppedFile);
+  };
+    // Analyze screenshot
   const analyzeScreenshot = async () => {
-    if (!file) return;
+    if (!file) {
+      setError("Please select a screenshot first.");
+      return;
+    }
 
     setLoading(true);
     setError("");
     setResult(null);
+    setTaskAdded(false);
 
     try {
       const base64 =
@@ -197,8 +338,7 @@ export default function Home() {
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             image: base64,
@@ -212,8 +352,14 @@ export default function Home() {
 
       if (!response.ok) {
         throw new Error(
-          data.error ||
+          data?.error ||
             "Analysis failed."
+        );
+      }
+
+      if (!data?.result) {
+        throw new Error(
+          "The AI did not return a result."
         );
       }
 
@@ -231,13 +377,71 @@ export default function Home() {
         );
 
         throw new Error(
-          "The AI returned an invalid response."
+          "The AI returned an invalid response. Please try again."
         );
       }
 
+      // Normalize AI output so the UI
+      // doesn't break if a field is missing.
+      parsedResult = {
+        type:
+          parsedResult.type ||
+          "Unknown",
+
+        title:
+          parsedResult.title ||
+          "Untitled Action",
+
+        description:
+          parsedResult.description ||
+          "",
+
+        date:
+          parsedResult.date ||
+          "",
+
+        time:
+          parsedResult.time ||
+          "",
+
+        source:
+          parsedResult.source ||
+          "",
+
+        urgency:
+          parsedResult.urgency ||
+          "Low",
+
+        action:
+          parsedResult.action ||
+          "",
+
+        confidence:
+          typeof parsedResult.confidence ===
+          "number"
+            ? Math.max(
+                0,
+                Math.min(
+                  1,
+                  parsedResult.confidence
+                )
+              )
+            : 0,
+
+        requiredItems:
+          Array.isArray(
+            parsedResult.requiredItems
+          )
+            ? parsedResult.requiredItems
+            : [],
+      };
+
       setResult(parsedResult);
     } catch (err) {
-      console.error(err);
+      console.error(
+        "Screenshot analysis error:",
+        err
+      );
 
       setError(
         err instanceof Error
@@ -259,32 +463,110 @@ export default function Home() {
     setFile(null);
     setResult(null);
     setError("");
+    setLoading(false);
+    setTaskAdded(false);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   // Add AI result to tasks
   const addTask = () => {
-    if (!result) return;
+    if (!result) {
+      return;
+    }
 
     const newTask: Task = {
-      id: Date.now().toString(),
-      title: result.title,
-      description: result.description,
-      date: result.date,
-      time: result.time,
-      source: result.source,
-      urgency: result.urgency,
-      action: result.action,
+      id: `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`,
+
+      title:
+        result.title ||
+        "Untitled Action",
+
+      description:
+        result.description ||
+        "",
+
+      date:
+        result.date ||
+        "",
+
+      time:
+        result.time ||
+        "",
+
+      source:
+        result.source ||
+        "",
+
+      urgency:
+        result.urgency ||
+        "Low",
+
+      action:
+        result.action ||
+        "",
+
       completed: false,
     };
 
-    setTasks((previousTasks) => [
-      ...previousTasks,
-      newTask,
-    ]);
+    setTasks(
+      (previousTasks) => [
+        ...previousTasks,
+        newTask,
+      ]
+    );
 
-    alert("Task added successfully!");
+    setTaskAdded(true);
   };
-    return (
+
+  // Toggle task completion
+  const toggleTask = (
+    taskId: string
+  ) => {
+    setTasks(
+      (previousTasks) =>
+        previousTasks.map(
+          (task) =>
+            task.id === taskId
+              ? {
+                  ...task,
+                  completed:
+                    !task.completed,
+                }
+              : task
+        )
+    );
+  };
+
+  // Delete task
+  const deleteTask = (
+    taskId: string
+  ) => {
+    setTasks(
+      (previousTasks) =>
+        previousTasks.filter(
+          (task) =>
+            task.id !== taskId
+        )
+    );
+  };
+
+  // Statistics
+  const pendingCount =
+    tasks.filter(
+      (task) => !task.completed
+    ).length;
+
+  const completedCount =
+    tasks.filter(
+      (task) => task.completed
+    ).length;
+
+  return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-12">
 
@@ -292,13 +574,13 @@ export default function Home() {
             NAVIGATION
         ========================== */}
 
-        <nav className="mb-12 flex items-center justify-between">
+        <nav className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
           <button
             onClick={() =>
               setActivePage("home")
             }
-            className="text-xl font-bold tracking-tight"
+            className="self-start text-xl font-bold tracking-tight transition hover:text-slate-300"
           >
             Screenshot{" "}
             <span className="text-blue-500">
@@ -307,7 +589,7 @@ export default function Home() {
             Action
           </button>
 
-          <div className="flex gap-2 rounded-xl border border-slate-800 bg-slate-900 p-1">
+          <div className="flex w-fit gap-2 rounded-xl border border-slate-800 bg-slate-900 p-1">
 
             <button
               onClick={() =>
@@ -315,7 +597,7 @@ export default function Home() {
               }
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                 activePage === "home"
-                  ? "bg-blue-600 text-white"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                   : "text-slate-400 hover:text-white"
               }`}
             >
@@ -328,11 +610,16 @@ export default function Home() {
               }
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                 activePage === "actions"
-                  ? "bg-blue-600 text-white"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                   : "text-slate-400 hover:text-white"
               }`}
             >
               My Actions
+              {tasks.length > 0 && (
+                <span className="ml-2 rounded-full bg-slate-950 px-2 py-0.5 text-xs">
+                  {pendingCount}
+                </span>
+              )}
             </button>
 
           </div>
@@ -351,6 +638,9 @@ export default function Home() {
             <header className="mb-16 text-center">
 
               <div className="mb-4 inline-flex items-center rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-300">
+                <span className="mr-2">
+                  ✨
+                </span>
                 AI-powered screenshot intelligence
               </div>
 
@@ -381,7 +671,14 @@ export default function Home() {
 
                 <label
                   htmlFor="file-upload"
-                  className="flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-700 bg-slate-900/60 p-10 text-center transition hover:border-blue-500 hover:bg-slate-900"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed p-10 text-center transition ${
+                    dragActive
+                      ? "border-blue-500 bg-blue-500/10"
+                      : "border-slate-700 bg-slate-900/60 hover:border-blue-500 hover:bg-slate-900"
+                  }`}
                 >
 
                   <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-500/10 text-4xl">
@@ -389,7 +686,9 @@ export default function Home() {
                   </div>
 
                   <h2 className="text-2xl font-semibold">
-                    Drop your screenshot here
+                    {dragActive
+                      ? "Drop your screenshot"
+                      : "Drop your screenshot here"}
                   </h2>
 
                   <p className="mt-3 text-slate-400">
@@ -401,9 +700,10 @@ export default function Home() {
                   </span>
 
                   <input
+                    ref={fileInputRef}
                     id="file-upload"
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
                     className="hidden"
                     onChange={(event) =>
                       handleFileChange(
@@ -413,7 +713,7 @@ export default function Home() {
                   />
 
                   <p className="mt-5 text-xs text-slate-500">
-                    PNG, JPG, JPEG, WEBP
+                    PNG, JPG, JPEG, WEBP · Max 10 MB
                   </p>
 
                 </label>
@@ -424,21 +724,22 @@ export default function Home() {
 
                   {/* Image header */}
 
-                  <div className="mb-5 flex items-center justify-between">
+                  <div className="mb-5 flex items-center justify-between gap-4">
 
                     <div>
                       <h2 className="text-xl font-semibold">
                         Screenshot uploaded
                       </h2>
 
-                      <p className="text-sm text-slate-400">
-                        Ready for AI analysis
+                      <p className="mt-1 text-sm text-slate-400">
+                        {file?.name || "Ready for AI analysis"}
                       </p>
                     </div>
 
                     <button
                       onClick={removeImage}
-                      className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
+                      disabled={loading}
+                      className="shrink-0 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Remove
                     </button>
@@ -452,7 +753,7 @@ export default function Home() {
 
                     <img
                       src={image}
-                      alt="Uploaded screenshot"
+                      alt="Uploaded screenshot preview"
                       className="max-h-[600px] w-full object-contain"
                     />
 
@@ -466,11 +767,16 @@ export default function Home() {
                     <button
                       onClick={analyzeScreenshot}
                       disabled={loading}
-                      className="mt-6 w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="mt-6 w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold shadow-lg shadow-blue-600/10 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {loading
-                        ? "AI is analyzing..."
-                        : "Analyze Screenshot →"}
+                      {loading ? (
+                        <span className="flex items-center justify-center gap-3">
+                          <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                          AI is analyzing...
+                        </span>
+                      ) : (
+                        "Analyze Screenshot →"
+                      )}
                     </button>
 
                   )}
@@ -481,7 +787,15 @@ export default function Home() {
                   {error && (
 
                     <div className="mt-5 rounded-xl border border-red-900 bg-red-950/40 p-4 text-sm text-red-300">
-                      {error}
+                      <div className="flex gap-3">
+                        <span>
+                          ⚠️
+                        </span>
+
+                        <p>
+                          {error}
+                        </p>
+                      </div>
                     </div>
 
                   )}
@@ -494,94 +808,244 @@ export default function Home() {
                   {result && (
 
                     <div className="mt-8 rounded-2xl border border-slate-700 bg-slate-950 p-6">
+                                          {/* Result Header */}
 
-                      <div className="mb-6 flex items-center justify-between">
+                      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
                         <div>
+                          {(() => {
+                            const typeStyle =
+                              getTypeStyle(
+                                result.type
+                              );
 
-                          <p className="text-sm font-medium text-blue-400">
-                            AI DETECTED
-                          </p>
+                            return (
+                              <>
+                                <p className="text-sm font-medium text-blue-400">
+                                  AI DETECTED
+                                </p>
 
-                          <h2 className="mt-1 text-2xl font-bold">
-                            {result.type}
-                          </h2>
+                                <div
+                                  className={`mt-2 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${typeStyle.badge}`}
+                                >
+                                  <span>
+                                    {typeStyle.icon}
+                                  </span>
 
+                                  <span>
+                                    {result.type ||
+                                      "Unknown"}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
 
-                        <div className="rounded-full bg-green-500/10 px-3 py-1 text-sm text-green-400">
-                          {Math.round(
-                            result.confidence * 100
-                          )}
-                          % confidence
+                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+
+                          <div className="rounded-full bg-green-500/10 px-3 py-1 text-sm text-green-400">
+                            {Math.round(
+                              result.confidence *
+                                100
+                            )}
+                            % confidence
+                          </div>
+
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase ${
+                              result.urgency
+                                .toLowerCase() ===
+                              "high"
+                                ? "bg-red-500/10 text-red-400"
+                                : result.urgency
+                                      .toLowerCase() ===
+                                    "medium"
+                                  ? "bg-yellow-500/10 text-yellow-400"
+                                  : "bg-green-500/10 text-green-400"
+                            }`}
+                          >
+                            {result.urgency ||
+                              "Low"}{" "}
+                            urgency
+                          </span>
+
                         </div>
 
                       </div>
 
 
-                      <div className="space-y-5">
+                      {/* Confidence Bar */}
+
+                      <div className="mb-8">
+
+                        <div className="mb-2 flex items-center justify-between">
+
+                          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                            AI Confidence
+                          </p>
+
+                          <p className="text-xs text-slate-400">
+                            {Math.round(
+                              result.confidence *
+                                100
+                            )}
+                            %
+                          </p>
+
+                        </div>
+
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+
+                          <div
+                            className="h-full rounded-full bg-green-500 transition-all duration-700"
+                            style={{
+                              width: `${Math.round(
+                                result.confidence *
+                                  100
+                              )}%`,
+                            }}
+                          />
+
+                        </div>
+
+                      </div>
+
+
+                      {/* Main Information */}
+
+                      <div className="space-y-6">
 
                         <ResultField
                           label="Title"
-                          value={result.title}
+                          value={
+                            result.title
+                          }
                         />
 
                         <ResultField
                           label="Description"
-                          value={result.description}
+                          value={
+                            result.description
+                          }
                         />
 
-                        {result.date && (
-                          <ResultField
-                            label="Date"
-                            value={result.date}
-                          />
+
+                        {/* Date / Time */}
+
+                        {(result.date ||
+                          result.time) && (
+
+                          <div className="grid gap-5 sm:grid-cols-2">
+
+                            {result.date && (
+                              <ResultField
+                                label="Date"
+                                value={
+                                  result.date
+                                }
+                              />
+                            )}
+
+                            {result.time && (
+                              <ResultField
+                                label="Time"
+                                value={
+                                  result.time
+                                }
+                              />
+                            )}
+
+                          </div>
+
                         )}
 
-                        {result.time && (
+
+                        {/* Source / Urgency */}
+
+                        <div className="grid gap-5 sm:grid-cols-2">
+
                           <ResultField
-                            label="Time"
-                            value={result.time}
+                            label="Source"
+                            value={
+                              result.source
+                            }
                           />
-                        )}
 
-                        <ResultField
-                          label="Source"
-                          value={result.source}
-                        />
+                          <ResultField
+                            label="Urgency"
+                            value={
+                              result.urgency
+                            }
+                          />
 
-                        <ResultField
-                          label="Urgency"
-                          value={result.urgency}
-                        />
-
-                        <ResultField
-                          label="Recommended Action"
-                          value={result.action}
-                        />
+                        </div>
 
 
-                        {/* Required items */}
+                        {/* Recommended Action */}
+
+                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-5">
+
+                          <div className="mb-3 flex items-center gap-2">
+
+                            <span className="text-xl">
+                              🎯
+                            </span>
+
+                            <p className="text-xs font-medium uppercase tracking-wide text-blue-400">
+                              Recommended Action
+                            </p>
+
+                          </div>
+
+                          <p className="text-base leading-7 text-slate-200">
+                            {result.action ||
+                              "No specific action detected."}
+                          </p>
+
+                        </div>
+
+
+                        {/* Required Items */}
 
                         {result.requiredItems &&
-                          result.requiredItems.length > 0 && (
+                          result.requiredItems
+                            .length > 0 && (
 
                             <div>
 
-                              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                Required Items
-                              </p>
+                              <div className="mb-3 flex items-center gap-2">
 
-                              <ul className="mt-2 space-y-2">
+                                <span className="text-xl">
+                                  📋
+                                </span>
+
+                                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                  Required Items
+                                </p>
+
+                              </div>
+
+                              <ul className="space-y-2">
 
                                 {result.requiredItems.map(
-                                  (item, index) => (
+                                  (
+                                    item,
+                                    index
+                                  ) => (
 
                                     <li
-                                      key={index}
-                                      className="rounded-lg bg-slate-900 px-4 py-2 text-slate-200"
+                                      key={`${item}-${index}`}
+                                      className="flex items-start gap-3 rounded-lg bg-slate-900 px-4 py-3 text-slate-200"
                                     >
-                                      • {item}
+                                      <span className="mt-0.5 text-green-400">
+                                        ✓
+                                      </span>
+
+                                      <span className="text-sm leading-6">
+                                        {item}
+                                      </span>
+
                                     </li>
 
                                   )
@@ -596,14 +1060,62 @@ export default function Home() {
                       </div>
 
 
+                      {/* Task Added Confirmation */}
+
+                      {taskAdded && (
+
+                        <div className="mt-6 rounded-xl border border-green-500/20 bg-green-500/10 p-4">
+
+                          <div className="flex items-center gap-3">
+
+                            <span className="text-xl">
+                              ✅
+                            </span>
+
+                            <div>
+
+                              <p className="font-semibold text-green-400">
+                                Added to My Actions
+                              </p>
+
+                              <p className="mt-1 text-sm text-green-400/70">
+                                This action has been saved and will remain available after refreshing the page.
+                              </p>
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      )}
+
+
                       {/* Add to Tasks */}
 
-                      <button
-                        className="mt-8 w-full rounded-xl bg-green-600 px-6 py-4 font-semibold transition hover:bg-green-500"
-                        onClick={addTask}
-                      >
-                        ✓ Add to Tasks
-                      </button>
+                      {!taskAdded ? (
+
+                        <button
+                          className="mt-8 w-full rounded-xl bg-green-600 px-6 py-4 font-semibold shadow-lg shadow-green-600/10 transition hover:bg-green-500"
+                          onClick={addTask}
+                        >
+                          ✓ Add to Tasks
+                        </button>
+
+                      ) : (
+
+                        <button
+                          onClick={() =>
+                            setActivePage(
+                              "actions"
+                            )
+                          }
+                          className="mt-8 w-full rounded-xl border border-slate-700 bg-slate-900 px-6 py-4 font-semibold text-slate-200 transition hover:bg-slate-800"
+                        >
+                          View My Actions →
+                        </button>
+
+                      )}
 
                     </div>
 
@@ -614,7 +1126,8 @@ export default function Home() {
               )}
 
             </section>
-            
+
+
             {/* =========================
                 HOME TASKS
             ========================== */}
@@ -623,148 +1136,194 @@ export default function Home() {
 
               <section className="mx-auto mt-16 w-full max-w-3xl">
 
-                <div className="mb-6">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 
-                  <p className="text-sm font-medium text-blue-400">
-                    YOUR ACTIONS
-                  </p>
+                  <div>
 
-                  <h2 className="mt-1 text-3xl font-bold">
-                    My Tasks
-                  </h2>
+                    <p className="text-sm font-medium text-blue-400">
+                      YOUR ACTIONS
+                    </p>
 
-                  <p className="mt-2 text-slate-400">
-                    Actions extracted from your screenshots.
-                  </p>
+                    <h2 className="mt-1 text-3xl font-bold">
+                      My Tasks
+                    </h2>
+
+                    <p className="mt-2 text-slate-400">
+                      Actions extracted from your screenshots.
+                    </p>
+
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setActivePage(
+                        "actions"
+                      )
+                    }
+                    className="w-fit rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                  >
+                    View All →
+                  </button>
 
                 </div>
 
 
                 <div className="space-y-4">
 
-                  {tasks.map((task) => (
+                  {tasks.map((task) => {
 
-                    <div
-                      key={task.id}
-                      className="rounded-2xl border border-slate-700 bg-slate-900 p-6"
-                    >
+                    const taskTypeStyle =
+                      getTypeStyle(
+                        "task"
+                      );
 
-                      <div className="flex items-start justify-between gap-4">
+                    return (
 
-                        <div>
+                      <div
+                        key={task.id}
+                        className={`rounded-2xl border bg-slate-900 p-6 transition ${
+                          task.completed
+                            ? "border-slate-800 opacity-70"
+                            : "border-slate-700"
+                        }`}
+                      >
 
-                          <div className="mb-2 inline-flex rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400">
-                            TASK
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+                          <div className="min-w-0">
+
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+
+                              <div
+                                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${taskTypeStyle.badge}`}
+                              >
+                                <span>
+                                  {taskTypeStyle.icon}
+                                </span>
+
+                                <span>
+                                  TASK
+                                </span>
+                              </div>
+
+                              <div
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  task.urgency
+                                    .toLowerCase() ===
+                                  "high"
+                                    ? "bg-red-500/10 text-red-400"
+                                    : task.urgency
+                                          .toLowerCase() ===
+                                        "medium"
+                                      ? "bg-yellow-500/10 text-yellow-400"
+                                      : "bg-green-500/10 text-green-400"
+                                }`}
+                              >
+                                {task.urgency ||
+                                  "Low"}
+                              </div>
+
+                            </div>
+
+                            <h3
+                              className={`text-xl font-semibold ${
+                                task.completed
+                                  ? "text-slate-500 line-through"
+                                  : "text-white"
+                              }`}
+                            >
+                              {task.title}
+                            </h3>
+
+                            {task.description && (
+                              <p className="mt-2 text-sm leading-6 text-slate-400">
+                                {task.description}
+                              </p>
+                            )}
+
                           </div>
 
-                          <h3
-                            className={`text-xl font-semibold ${
-                              task.completed
-                                ? "text-slate-500 line-through"
-                                : "text-white"
-                            }`}
-                          >
-                            {task.title}
-                          </h3>
+                        </div>
 
-                          {task.description && (
-                            <p className="mt-2 text-sm text-slate-400">
-                              {task.description}
-                            </p>
+
+                        <div className="mt-5 grid gap-4 border-t border-slate-800 pt-5 sm:grid-cols-2">
+
+                          {task.date && (
+                            <DashboardField
+                              label="Due"
+                              value={
+                                task.date
+                              }
+                            />
+                          )}
+
+                          {task.time && (
+                            <DashboardField
+                              label="Time"
+                              value={
+                                task.time
+                              }
+                            />
+                          )}
+
+                          {task.source && (
+                            <DashboardField
+                              label="Source"
+                              value={
+                                task.source
+                              }
+                            />
+                          )}
+
+                          {task.action && (
+                            <DashboardField
+                              label="Action"
+                              value={
+                                task.action
+                              }
+                            />
                           )}
 
                         </div>
 
-                        <div className="rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-400">
-                          {task.urgency}
-                        </div>
+
+                        {/* Complete */}
+
+                        <button
+                          onClick={() =>
+                            toggleTask(
+                              task.id
+                            )
+                          }
+                          className={`mt-6 w-full rounded-xl px-5 py-3 font-semibold transition ${
+                            task.completed
+                              ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                              : "bg-green-600 text-white hover:bg-green-500"
+                          }`}
+                        >
+                          {task.completed
+                            ? "✓ Completed — Mark as Pending"
+                            : "Mark as Complete"}
+                        </button>
+
+
+                        {/* Delete */}
+
+                        <button
+                          onClick={() =>
+                            deleteTask(
+                              task.id
+                            )
+                          }
+                          className="mt-2 w-full rounded-xl border border-red-900/50 bg-red-950/20 px-5 py-3 font-semibold text-red-400 transition hover:bg-red-950/40"
+                        >
+                          🗑️ Delete Task
+                        </button>
 
                       </div>
 
-
-                      <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-
-                        {task.date && (
-                          <DashboardField
-                            label="Due"
-                            value={task.date}
-                          />
-                        )}
-
-                        {task.time && (
-                          <DashboardField
-                            label="Time"
-                            value={task.time}
-                          />
-                        )}
-
-                        {task.source && (
-                          <DashboardField
-                            label="Source"
-                            value={task.source}
-                          />
-                        )}
-
-                        {task.action && (
-                          <DashboardField
-                            label="Action"
-                            value={task.action}
-                          />
-                        )}
-
-                      </div>
-
-
-                      {/* Complete */}
-
-                      <button
-                        onClick={() => {
-                          setTasks(
-                            (previousTasks) =>
-                              previousTasks.map(
-                                (item) =>
-                                  item.id === task.id
-                                    ? {
-                                        ...item,
-                                        completed:
-                                          !item.completed,
-                                      }
-                                    : item
-                              )
-                          );
-                        }}
-                        className={`mt-6 w-full rounded-xl px-5 py-3 font-semibold transition ${
-                          task.completed
-                            ? "bg-slate-700 text-slate-300"
-                            : "bg-green-600 text-white hover:bg-green-500"
-                        }`}
-                      >
-                        {task.completed
-                          ? "✓ Completed"
-                          : "Mark as Complete"}
-                      </button>
-
-
-                      {/* Delete */}
-
-                      <button
-                        onClick={() => {
-                          setTasks(
-                            (previousTasks) =>
-                              previousTasks.filter(
-                                (item) =>
-                                  item.id !== task.id
-                              )
-                          );
-                        }}
-                        className="mt-2 w-full rounded-xl bg-red-600 px-5 py-3 font-semibold text-white transition hover:bg-red-500"
-                      >
-                        🗑️ Delete Task
-                      </button>
-
-                    </div>
-
-                  ))}
+                    );
+                  })}
 
                 </div>
 
@@ -836,25 +1395,26 @@ export default function Home() {
 
               <StatCard
                 label="Total"
-                value={tasks.length}
+                value={
+                  tasks.length
+                }
+                icon="📋"
               />
 
               <StatCard
                 label="Pending"
                 value={
-                  tasks.filter(
-                    (task) => !task.completed
-                  ).length
+                  pendingCount
                 }
+                icon="⏳"
               />
 
               <StatCard
                 label="Completed"
                 value={
-                  tasks.filter(
-                    (task) => task.completed
-                  ).length
+                  completedCount
                 }
+                icon="✅"
               />
 
             </div>
@@ -880,9 +1440,11 @@ export default function Home() {
 
                 <button
                   onClick={() =>
-                    setActivePage("home")
+                    setActivePage(
+                      "home"
+                    )
                   }
-                  className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-medium hover:bg-blue-500"
+                  className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-medium transition hover:bg-blue-500"
                 >
                   Analyze Screenshot
                 </button>
@@ -897,18 +1459,67 @@ export default function Home() {
 
                   <div
                     key={task.id}
-                    className="rounded-2xl border border-slate-700 bg-slate-900 p-6"
+                    className={`rounded-2xl border bg-slate-900 p-6 transition ${
+                      task.completed
+                        ? "border-slate-800 opacity-70"
+                        : "border-slate-700"
+                    }`}
                   >
 
                     {/* Task header */}
 
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 
-                      <div>
+                      <div className="min-w-0">
 
-                        <span className="inline-flex rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400">
-                          TASK
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
+                              getTypeStyle(
+                                "task"
+                              ).badge
+                            }`}
+                          >
+                            <span>
+                              {getTypeStyle(
+                                "task"
+                              ).icon}
+                            </span>
+
+                            TASK
+                          </span>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              task.completed
+                                ? "bg-green-500/10 text-green-400"
+                                : "bg-yellow-500/10 text-yellow-400"
+                            }`}
+                          >
+                            {task.completed
+                              ? "Completed"
+                              : "Pending"}
+                          </span>
+
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              task.urgency
+                                .toLowerCase() ===
+                              "high"
+                                ? "bg-red-500/10 text-red-400"
+                                : task.urgency
+                                      .toLowerCase() ===
+                                    "medium"
+                                  ? "bg-yellow-500/10 text-yellow-400"
+                                  : "bg-green-500/10 text-green-400"
+                            }`}
+                          >
+                            {task.urgency ||
+                              "Low"}
+                          </span>
+
+                        </div>
 
                         <h2
                           className={`mt-3 text-xl font-semibold ${
@@ -921,17 +1532,12 @@ export default function Home() {
                         </h2>
 
                         {task.description && (
-                          <p className="mt-2 text-slate-400">
+                          <p className="mt-2 leading-6 text-slate-400">
                             {task.description}
                           </p>
                         )}
 
                       </div>
-
-
-                      <span className="rounded-full bg-yellow-500/10 px-3 py-1 text-xs text-yellow-400">
-                        {task.urgency}
-                      </span>
 
                     </div>
 
@@ -977,49 +1583,34 @@ export default function Home() {
 
                     {/* Buttons */}
 
-                    <div className="mt-6 flex gap-3">
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
 
                       <button
-                        onClick={() => {
-                          setTasks(
-                            (previousTasks) =>
-                              previousTasks.map(
-                                (item) =>
-                                  item.id === task.id
-                                    ? {
-                                        ...item,
-                                        completed:
-                                          !item.completed,
-                                      }
-                                    : item
-                              )
-                          );
-                        }}
+                        onClick={() =>
+                          toggleTask(
+                            task.id
+                          )
+                        }
                         className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${
                           task.completed
-                            ? "bg-slate-700 text-slate-300"
+                            ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
                             : "bg-green-600 text-white hover:bg-green-500"
                         }`}
                       >
                         {task.completed
-                          ? "✓ Completed"
+                          ? "✓ Completed — Mark as Pending"
                           : "Mark as Complete"}
                       </button>
 
-
                       <button
-                        onClick={() => {
-                          setTasks(
-                            (previousTasks) =>
-                              previousTasks.filter(
-                                (item) =>
-                                  item.id !== task.id
-                              )
-                          );
-                        }}
-                        className="rounded-xl border border-slate-700 px-5 py-3 text-sm text-slate-400 transition hover:border-red-900 hover:text-red-400"
+                        onClick={() =>
+                          deleteTask(
+                            task.id
+                          )
+                        }
+                        className="rounded-xl border border-slate-700 px-5 py-3 text-sm text-slate-400 transition hover:border-red-900 hover:bg-red-950/20 hover:text-red-400"
                       >
-                        Delete
+                        🗑 Delete
                       </button>
 
                     </div>
@@ -1035,7 +1626,7 @@ export default function Home() {
           </section>
 
         )}
-        
+
         {/* =========================
             FOOTER
         ========================== */}
@@ -1048,8 +1639,6 @@ export default function Home() {
     </main>
   );
 }
-
-
 /* =========================
    FILE TO BASE64
 ========================== */
@@ -1059,7 +1648,8 @@ function fileToBase64(
 ): Promise<string> {
   return new Promise(
     (resolve, reject) => {
-      const reader = new FileReader();
+      const reader =
+        new FileReader();
 
       reader.onload = () => {
         const result =

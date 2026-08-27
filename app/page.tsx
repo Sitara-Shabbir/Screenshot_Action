@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 type Task = {
   id: string;
+  type: string;
   title: string;
   description: string;
   date: string;
@@ -38,43 +39,56 @@ function getTypeStyle(type: string): {
       return {
         icon: "📅",
         badge:
-          "border-purple-500/30 bg-purple-500/10 text-purple-300",
+          "border-violet-200 bg-violet-50 text-violet-700",
       };
 
     case "deadline":
       return {
         icon: "⏰",
         badge:
-          "border-red-500/30 bg-red-500/10 text-red-300",
+          "border-orange-200 bg-orange-50 text-orange-700",
       };
 
     case "reminder":
       return {
         icon: "🔔",
         badge:
-          "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
+          "border-amber-200 bg-amber-50 text-amber-700",
       };
 
     case "message":
       return {
         icon: "💬",
         badge:
-          "border-blue-500/30 bg-blue-500/10 text-blue-300",
+          "border-sky-200 bg-sky-50 text-sky-700",
       };
 
     case "task":
       return {
-        icon: "✅",
+        icon: "✓",
         badge:
-          "border-green-500/30 bg-green-500/10 text-green-300",
+          "border-emerald-200 bg-emerald-50 text-emerald-700",
       };
 
     default:
       return {
         icon: "📌",
         badge:
-          "border-slate-600 bg-slate-800 text-slate-200",
+          "border-slate-200 bg-slate-50 text-slate-700",
       };
+  }
+}
+
+function getUrgencyStyle(urgency: string): string {
+  switch (urgency.toLowerCase()) {
+    case "high":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+
+    case "medium":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+
+    default:
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
   }
 }
 
@@ -86,12 +100,12 @@ function DashboardField({
   value: string;
 }): React.ReactNode {
   return (
-    <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+    <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </p>
 
-      <p className="mt-1 text-sm leading-6 text-slate-200">
+      <p className="mt-1 text-sm leading-6 text-slate-700">
         {value || "Not specified"}
       </p>
     </div>
@@ -107,11 +121,11 @@ function ResultField({
 }) {
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </p>
 
-      <p className="mt-1 text-base leading-7 text-slate-200">
+      <p className="mt-1 text-base leading-7 text-slate-700">
         {value || "Not detected"}
       </p>
     </div>
@@ -128,18 +142,18 @@ function StatCard({
   icon: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition hover:border-slate-700">
+    <div className="rounded-2xl border border-violet-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-400">
+        <p className="text-sm font-medium text-slate-500">
           {label}
         </p>
 
-        <span className="text-xl">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-lg">
           {icon}
         </span>
       </div>
 
-      <p className="mt-2 text-3xl font-bold text-white">
+      <p className="mt-3 text-3xl font-bold text-slate-800">
         {value}
       </p>
     </div>
@@ -156,16 +170,16 @@ function Feature({
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 transition hover:border-slate-700 hover:bg-slate-900">
-      <div className="mb-4 text-3xl">
+    <div className="group rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-violet-100 hover:shadow-md">
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-2xl transition group-hover:scale-105">
         {icon}
       </div>
 
-      <h3 className="text-lg font-semibold">
+      <h3 className="text-lg font-semibold text-slate-800">
         {title}
       </h3>
 
-      <p className="mt-2 text-sm leading-6 text-slate-400">
+      <p className="mt-2 text-sm leading-6 text-slate-500">
         {description}
       </p>
     </div>
@@ -317,10 +331,13 @@ export default function Home() {
 
     handleFileChange(droppedFile);
   };
-    // Analyze screenshot
+
+  // Analyze screenshot
   const analyzeScreenshot = async () => {
     if (!file) {
-      setError("Please select a screenshot first.");
+      setError(
+        "Please select a screenshot first."
+      );
       return;
     }
 
@@ -381,8 +398,6 @@ export default function Home() {
         );
       }
 
-      // Normalize AI output so the UI
-      // doesn't break if a field is missing.
       parsedResult = {
         type:
           parsedResult.type ||
@@ -478,11 +493,14 @@ export default function Home() {
     }
 
     const newTask: Task = {
-      id: `${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 8)}`,
+  id: `${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`,
 
-      title:
+  type:
+    result.type || "TASK",
+
+  title:
         result.title ||
         "Untitled Action",
 
@@ -555,7 +573,6 @@ export default function Home() {
     );
   };
 
-  // Statistics
   const pendingCount =
     tasks.filter(
       (task) => !task.completed
@@ -567,38 +584,35 @@ export default function Home() {
     ).length;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-6 py-12">
+    <main className="min-h-screen bg-[#F8F7FC] text-slate-800">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-7 sm:px-8 sm:py-10">
 
-        {/* =========================
-            NAVIGATION
-        ========================== */}
-
-        <nav className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* NAVIGATION */}
+        <nav className="mb-12 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 
           <button
             onClick={() =>
               setActivePage("home")
             }
-            className="self-start text-xl font-bold tracking-tight transition hover:text-slate-300"
+            className="group self-start text-xl font-bold tracking-tight text-slate-800 transition hover:text-violet-600"
           >
             Screenshot{" "}
-            <span className="text-blue-500">
+            <span className="text-violet-500 transition group-hover:text-violet-600">
               →
             </span>{" "}
             Action
           </button>
 
-          <div className="flex w-fit gap-2 rounded-xl border border-slate-800 bg-slate-900 p-1">
+          <div className="flex w-fit gap-1 rounded-2xl border border-violet-100 bg-white p-1.5 shadow-sm">
 
             <button
               onClick={() =>
                 setActivePage("home")
               }
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
                 activePage === "home"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-violet-500 text-white shadow-md shadow-violet-200"
+                  : "text-slate-500 hover:bg-violet-50 hover:text-violet-700"
               }`}
             >
               Home
@@ -608,15 +622,22 @@ export default function Home() {
               onClick={() =>
                 setActivePage("actions")
               }
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
                 activePage === "actions"
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-violet-500 text-white shadow-md shadow-violet-200"
+                  : "text-slate-500 hover:bg-violet-50 hover:text-violet-700"
               }`}
             >
               My Actions
+
               {tasks.length > 0 && (
-                <span className="ml-2 rounded-full bg-slate-950 px-2 py-0.5 text-xs">
+                <span
+                  className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                    activePage === "actions"
+                      ? "bg-white/20 text-white"
+                      : "bg-violet-100 text-violet-600"
+                  }`}
+                >
                   {pendingCount}
                 </span>
               )}
@@ -625,77 +646,73 @@ export default function Home() {
           </div>
         </nav>
 
-
-        {/* =========================
-            HOME PAGE
-        ========================== */}
-
+        {/* HOME PAGE */}
         {activePage === "home" && (
           <>
+            {/* HERO */}
+            <header className="mb-14 text-center">
 
-            {/* Header */}
-
-            <header className="mb-16 text-center">
-
-              <div className="mb-4 inline-flex items-center rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-300">
+              <div className="mb-5 inline-flex items-center rounded-full border border-violet-100 bg-white px-4 py-2 text-sm font-medium text-violet-600 shadow-sm">
                 <span className="mr-2">
                   ✨
                 </span>
                 AI-powered screenshot intelligence
               </div>
 
-              <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
+              <h1 className="text-5xl font-bold tracking-tight text-slate-800 sm:text-6xl">
                 Screenshot
-                <span className="text-blue-500">
-                  {" "}
-                  →{" "}
+                <span className="mx-2 text-violet-500">
+                  →
                 </span>
                 Action
               </h1>
 
-              <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-400">
-                Turn passive screenshots into actionable information.
-                Upload a screenshot and let AI understand what needs to happen next.
+              <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-500">
+                Turn passive screenshots into
+                actionable information. Upload a
+                screenshot and let AI understand
+                what needs to happen next.
               </p>
 
             </header>
 
-
-            {/* =========================
-                UPLOAD SECTION
-            ========================== */}
-
+            {/* UPLOAD SECTION */}
             <section className="mx-auto w-full max-w-3xl">
 
               {!image ? (
-
                 <label
                   htmlFor="file-upload"
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  className={`flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed p-10 text-center transition ${
+                  className={`group flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-[2rem] border-2 border-dashed p-10 text-center transition ${
                     dragActive
-                      ? "border-blue-500 bg-blue-500/10"
-                      : "border-slate-700 bg-slate-900/60 hover:border-blue-500 hover:bg-slate-900"
+                      ? "border-violet-400 bg-violet-50 shadow-lg shadow-violet-100"
+                      : "border-violet-200 bg-white shadow-sm hover:border-violet-400 hover:bg-violet-50/40 hover:shadow-md"
                   }`}
                 >
 
-                  <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-500/10 text-4xl">
+                  <div
+                    className={`mb-6 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl shadow-sm transition ${
+                      dragActive
+                        ? "bg-violet-100"
+                        : "bg-violet-50 group-hover:scale-105"
+                    }`}
+                  >
                     📸
                   </div>
 
-                  <h2 className="text-2xl font-semibold">
+                  <h2 className="text-2xl font-bold text-slate-800">
                     {dragActive
                       ? "Drop your screenshot"
                       : "Drop your screenshot here"}
                   </h2>
 
-                  <p className="mt-3 text-slate-400">
+                  <p className="mt-3 text-slate-500">
                     or click to browse from your computer
                   </p>
 
-                  <span className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-medium transition hover:bg-blue-500">
+                  <span className="mt-6 rounded-xl bg-violet-500 px-6 py-3 font-semibold text-white shadow-md shadow-violet-200 transition hover:bg-violet-600">
                     Choose Screenshot
                   </span>
 
@@ -712,62 +729,53 @@ export default function Home() {
                     }
                   />
 
-                  <p className="mt-5 text-xs text-slate-500">
+                  <p className="mt-5 text-xs text-slate-400">
                     PNG, JPG, JPEG, WEBP · Max 10 MB
                   </p>
 
                 </label>
-
               ) : (
+                <div className="rounded-[2rem] border border-violet-100 bg-white p-5 shadow-md sm:p-6">
 
-                <div className="rounded-3xl border border-slate-700 bg-slate-900 p-6">
-
-                  {/* Image header */}
-
+                  {/* IMAGE HEADER */}
                   <div className="mb-5 flex items-center justify-between gap-4">
 
                     <div>
-                      <h2 className="text-xl font-semibold">
+                      <h2 className="text-xl font-bold text-slate-800">
                         Screenshot uploaded
                       </h2>
 
                       <p className="mt-1 text-sm text-slate-400">
-                        {file?.name || "Ready for AI analysis"}
+                        {file?.name ||
+                          "Ready for AI analysis"}
                       </p>
                     </div>
 
                     <button
                       onClick={removeImage}
                       disabled={loading}
-                      className="shrink-0 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="shrink-0 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Remove
                     </button>
 
                   </div>
 
-
-                  {/* Image preview */}
-
-                  <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-950">
-
+                  {/* IMAGE PREVIEW */}
+                  <div className="overflow-hidden rounded-2xl border border-violet-100 bg-[#F8F7FC] p-2">
                     <img
                       src={image}
                       alt="Uploaded screenshot preview"
-                      className="max-h-[600px] w-full object-contain"
+                      className="max-h-[600px] w-full rounded-xl object-contain"
                     />
-
                   </div>
 
-
-                  {/* Analyze button */}
-
+                  {/* ANALYZE BUTTON */}
                   {!result && (
-
                     <button
                       onClick={analyzeScreenshot}
                       disabled={loading}
-                      className="mt-6 w-full rounded-xl bg-blue-600 px-6 py-4 font-semibold shadow-lg shadow-blue-600/10 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="mt-6 w-full rounded-xl bg-violet-500 px-6 py-4 font-semibold text-white shadow-lg shadow-violet-200 transition hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {loading ? (
                         <span className="flex items-center justify-center gap-3">
@@ -778,564 +786,380 @@ export default function Home() {
                         "Analyze Screenshot →"
                       )}
                     </button>
-
                   )}
 
-
-                  {/* Error */}
-
+                  {/* ERROR */}
                   {error && (
-
-                    <div className="mt-5 rounded-xl border border-red-900 bg-red-950/40 p-4 text-sm text-red-300">
+                    <div className="mt-5 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">
                       <div className="flex gap-3">
-                        <span>
-                          ⚠️
-                        </span>
-
-                        <p>
-                          {error}
-                        </p>
+                        <span>⚠️</span>
+                        <p>{error}</p>
                       </div>
                     </div>
-
                   )}
-
-
-                  {/* =========================
-                      AI RESULT
-                  ========================== */}
-
+                                    {/* AI RESULT */}
                   {result && (
+                    <div className="mt-8 rounded-[1.75rem] border border-violet-100 bg-[#FCFBFF] p-5 shadow-sm sm:p-7">
 
-                    <div className="mt-8 rounded-2xl border border-slate-700 bg-slate-950 p-6">
-                                          {/* Result Header */}
-
-                      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      {/* RESULT HEADER */}
+                      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
 
                         <div>
-                          {(() => {
-                            const typeStyle =
-                              getTypeStyle(
-                                result.type
-                              );
+                          <p className="text-sm font-semibold uppercase tracking-wider text-violet-500">
+                            AI detected
+                          </p>
 
-                            return (
-                              <>
-                                <p className="text-sm font-medium text-blue-400">
-                                  AI DETECTED
-                                </p>
+                          <div
+                            className={`mt-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${
+                              getTypeStyle(result.type).badge
+                            }`}
+                          >
+                            <span>
+                              {getTypeStyle(result.type).icon}
+                            </span>
 
-                                <div
-                                  className={`mt-2 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${typeStyle.badge}`}
-                                >
-                                  <span>
-                                    {typeStyle.icon}
-                                  </span>
+                            <span>
+                              {result.type}
+                            </span>
+                          </div>
 
-                                  <span>
-                                    {result.type ||
-                                      "Unknown"}
-                                  </span>
-                                </div>
-                              </>
-                            );
-                          })()}
+                          <h2 className="mt-4 text-2xl font-bold text-slate-800 sm:text-3xl">
+                            {result.title}
+                          </h2>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                        <div className="flex flex-col items-start gap-2 sm:items-end">
 
-                          <div className="rounded-full bg-green-500/10 px-3 py-1 text-sm text-green-400">
+                          <div className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
                             {Math.round(
-                              result.confidence *
-                                100
+                              result.confidence * 100
                             )}
                             % confidence
                           </div>
 
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase ${
-                              result.urgency
-                                .toLowerCase() ===
-                              "high"
-                                ? "bg-red-500/10 text-red-400"
-                                : result.urgency
-                                      .toLowerCase() ===
-                                    "medium"
-                                  ? "bg-yellow-500/10 text-yellow-400"
-                                  : "bg-green-500/10 text-green-400"
+                          <div
+                            className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
+                              getUrgencyStyle(
+                                result.urgency
+                              )
                             }`}
                           >
-                            {result.urgency ||
-                              "Low"}{" "}
-                            urgency
-                          </span>
-
-                        </div>
-
-                      </div>
-
-
-                      {/* Confidence Bar */}
-
-                      <div className="mb-8">
-
-                        <div className="mb-2 flex items-center justify-between">
-
-                          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                            AI Confidence
-                          </p>
-
-                          <p className="text-xs text-slate-400">
-                            {Math.round(
-                              result.confidence *
-                                100
-                            )}
-                            %
-                          </p>
-
-                        </div>
-
-                        <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-
-                          <div
-                            className="h-full rounded-full bg-green-500 transition-all duration-700"
-                            style={{
-                              width: `${Math.round(
-                                result.confidence *
-                                  100
-                              )}%`,
-                            }}
-                          />
-
-                        </div>
-
-                      </div>
-
-
-                      {/* Main Information */}
-
-                      <div className="space-y-6">
-
-                        <ResultField
-                          label="Title"
-                          value={
-                            result.title
-                          }
-                        />
-
-                        <ResultField
-                          label="Description"
-                          value={
-                            result.description
-                          }
-                        />
-
-
-                        {/* Date / Time */}
-
-                        {(result.date ||
-                          result.time) && (
-
-                          <div className="grid gap-5 sm:grid-cols-2">
-
-                            {result.date && (
-                              <ResultField
-                                label="Date"
-                                value={
-                                  result.date
-                                }
-                              />
-                            )}
-
-                            {result.time && (
-                              <ResultField
-                                label="Time"
-                                value={
-                                  result.time
-                                }
-                              />
-                            )}
-
+                            {result.urgency || "Low"} urgency
                           </div>
 
+                        </div>
+
+                      </div>
+
+                      {/* RESULT CONTENT */}
+                      <div className="mt-7 space-y-6">
+
+                        {result.description && (
+                          <div className="rounded-2xl border border-slate-100 bg-white p-5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                              What AI understood
+                            </p>
+
+                            <p className="mt-2 text-sm leading-7 text-slate-600">
+                              {result.description}
+                            </p>
+                          </div>
                         )}
-
-
-                        {/* Source / Urgency */}
 
                         <div className="grid gap-5 sm:grid-cols-2">
 
-                          <ResultField
-                            label="Source"
-                            value={
-                              result.source
-                            }
-                          />
+                          {result.date && (
+                            <ResultField
+                              label={
+                                result.type.toLowerCase() ===
+                                "deadline"
+                                  ? "Deadline"
+                                  : "Date"
+                              }
+                              value={result.date}
+                            />
+                          )}
 
-                          <ResultField
-                            label="Urgency"
-                            value={
-                              result.urgency
-                            }
-                          />
+                          {result.time && (
+                            <ResultField
+                              label="Time"
+                              value={result.time}
+                            />
+                          )}
 
-                        </div>
+                          {result.source && (
+                            <ResultField
+                              label="Source"
+                              value={result.source}
+                            />
+                          )}
 
-
-                        {/* Recommended Action */}
-
-                        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-5">
-
-                          <div className="mb-3 flex items-center gap-2">
-
-                            <span className="text-xl">
-                              🎯
-                            </span>
-
-                            <p className="text-xs font-medium uppercase tracking-wide text-blue-400">
-                              Recommended Action
-                            </p>
-
-                          </div>
-
-                          <p className="text-base leading-7 text-slate-200">
-                            {result.action ||
-                              "No specific action detected."}
-                          </p>
+                          {result.action && (
+                            <ResultField
+                              label="Recommended Action"
+                              value={result.action}
+                            />
+                          )}
 
                         </div>
 
+                        {/* REQUIRED ITEMS */}
+                        {result.requiredItems.length > 0 && (
+                          <div className="rounded-2xl border border-sky-100 bg-sky-50/50 p-5">
 
-                        {/* Required Items */}
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100">
+                                📋
+                              </span>
 
-                        {result.requiredItems &&
-                          result.requiredItems
-                            .length > 0 && (
-
-                            <div>
-
-                              <div className="mb-3 flex items-center gap-2">
-
-                                <span className="text-xl">
-                                  📋
-                                </span>
-
-                                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                                  Required Items
-                                </p>
-
-                              </div>
-
-                              <ul className="space-y-2">
-
-                                {result.requiredItems.map(
-                                  (
-                                    item,
-                                    index
-                                  ) => (
-
-                                    <li
-                                      key={`${item}-${index}`}
-                                      className="flex items-start gap-3 rounded-lg bg-slate-900 px-4 py-3 text-slate-200"
-                                    >
-                                      <span className="mt-0.5 text-green-400">
-                                        ✓
-                                      </span>
-
-                                      <span className="text-sm leading-6">
-                                        {item}
-                                      </span>
-
-                                    </li>
-
-                                  )
-                                )}
-
-                              </ul>
-
+                              <p className="text-sm font-bold text-sky-800">
+                                Required Items
+                              </p>
                             </div>
 
-                          )}
+                            <ul className="mt-4 space-y-2">
+                              {result.requiredItems.map(
+                                (item, index) => (
+                                  <li
+                                    key={`${item}-${index}`}
+                                    className="flex items-center gap-3 rounded-xl border border-white bg-white px-4 py-3 text-sm text-slate-700 shadow-sm"
+                                  >
+                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs text-sky-600">
+                                      ✓
+                                    </span>
+
+                                    {item}
+                                  </li>
+                                )
+                              )}
+                            </ul>
+
+                          </div>
+                        )}
+
+                        {/* ACTION */}
+                        {result.action && (
+                          <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-5">
+
+                            <p className="text-xs font-semibold uppercase tracking-wide text-violet-500">
+                              Suggested next step
+                            </p>
+
+                            <div className="mt-3 flex items-start gap-3">
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-lg">
+                                ✨
+                              </span>
+
+                              <p className="pt-1 text-base font-semibold leading-6 text-violet-900">
+                                {result.action}
+                              </p>
+                            </div>
+
+                          </div>
+                        )}
 
                       </div>
 
+                      {/* ADD TO TASKS */}
+                      <div className="mt-7">
 
-                      {/* Task Added Confirmation */}
-
-                      {taskAdded && (
-
-                        <div className="mt-6 rounded-xl border border-green-500/20 bg-green-500/10 p-4">
-
-                          <div className="flex items-center gap-3">
-
-                            <span className="text-xl">
-                              ✅
-                            </span>
-
-                            <div>
-
-                              <p className="font-semibold text-green-400">
-                                Added to My Actions
-                              </p>
-
-                              <p className="mt-1 text-sm text-green-400/70">
-                                This action has been saved and will remain available after refreshing the page.
-                              </p>
-
-                            </div>
-
+                        {!taskAdded ? (
+                          <button
+                            onClick={addTask}
+                            className="w-full rounded-xl bg-emerald-500 px-6 py-4 font-semibold text-white shadow-lg shadow-emerald-100 transition hover:bg-emerald-600 hover:shadow-xl"
+                          >
+                            ✓ Add to My Actions
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 font-semibold text-emerald-700">
+                            <span>✓</span>
+                            Added to My Actions
                           </div>
+                        )}
 
-                        </div>
-
-                      )}
-
-
-                      {/* Add to Tasks */}
-
-                      {!taskAdded ? (
-
-                        <button
-                          className="mt-8 w-full rounded-xl bg-green-600 px-6 py-4 font-semibold shadow-lg shadow-green-600/10 transition hover:bg-green-500"
-                          onClick={addTask}
-                        >
-                          ✓ Add to Tasks
-                        </button>
-
-                      ) : (
-
-                        <button
-                          onClick={() =>
-                            setActivePage(
-                              "actions"
-                            )
-                          }
-                          className="mt-8 w-full rounded-xl border border-slate-700 bg-slate-900 px-6 py-4 font-semibold text-slate-200 transition hover:bg-slate-800"
-                        >
-                          View My Actions →
-                        </button>
-
-                      )}
+                      </div>
 
                     </div>
-
                   )}
 
                 </div>
-
               )}
 
             </section>
 
-
-            {/* =========================
-                HOME TASKS
-            ========================== */}
-
+            {/* HOME TASK PREVIEW */}
             {tasks.length > 0 && (
-
               <section className="mx-auto mt-16 w-full max-w-3xl">
 
-                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="mb-6 flex items-end justify-between gap-4">
 
                   <div>
-
-                    <p className="text-sm font-medium text-blue-400">
-                      YOUR ACTIONS
+                    <p className="text-sm font-semibold uppercase tracking-wide text-violet-500">
+                      Your actions
                     </p>
 
-                    <h2 className="mt-1 text-3xl font-bold">
-                      My Tasks
+                    <h2 className="mt-1 text-3xl font-bold text-slate-800">
+                      Recent Actions
                     </h2>
 
-                    <p className="mt-2 text-slate-400">
-                      Actions extracted from your screenshots.
+                    <p className="mt-2 text-slate-500">
+                      Information extracted from your screenshots.
                     </p>
-
                   </div>
 
                   <button
                     onClick={() =>
-                      setActivePage(
-                        "actions"
-                      )
+                      setActivePage("actions")
                     }
-                    className="w-fit rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                    className="hidden rounded-xl border border-violet-100 bg-white px-4 py-2 text-sm font-semibold text-violet-600 shadow-sm transition hover:bg-violet-50 sm:block"
                   >
-                    View All →
+                    View all →
                   </button>
 
                 </div>
 
-
                 <div className="space-y-4">
 
-                  {tasks.map((task) => {
+                  {tasks
+                    .slice(-3)
+                    .reverse()
+                    .map((task) => {
 
-                    const taskTypeStyle =
-                      getTypeStyle(
-                        "task"
-                      );
+                      const typeStyle =
+                        getTypeStyle(
+                          task.type || "task"
+                        );
 
-                    return (
+                      return (
+                        <div
+                          key={task.id}
+                          className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow-md ${
+                            task.completed
+                              ? "border-slate-100 opacity-70"
+                              : "border-violet-100"
+                          }`}
+                        >
 
-                      <div
-                        key={task.id}
-                        className={`rounded-2xl border bg-slate-900 p-6 transition ${
-                          task.completed
-                            ? "border-slate-800 opacity-70"
-                            : "border-slate-700"
-                        }`}
-                      >
+                          <div className="flex items-start justify-between gap-4">
 
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-
-                          <div className="min-w-0">
-
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-
-                              <div
-                                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${taskTypeStyle.badge}`}
-                              >
-                                <span>
-                                  {taskTypeStyle.icon}
-                                </span>
-
-                                <span>
-                                  TASK
-                                </span>
-                              </div>
+                            <div className="min-w-0">
 
                               <div
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                  task.urgency
-                                    .toLowerCase() ===
-                                  "high"
-                                    ? "bg-red-500/10 text-red-400"
-                                    : task.urgency
-                                          .toLowerCase() ===
-                                        "medium"
-                                      ? "bg-yellow-500/10 text-yellow-400"
-                                      : "bg-green-500/10 text-green-400"
+                                className={`mb-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
+                                  typeStyle.badge
                                 }`}
                               >
-                                {task.urgency ||
-                                  "Low"}
+                                <span>
+                                  {typeStyle.icon}
+                                </span>
+
+                                <span>
+                                  {task.type || "TASK"}
+                                </span>
                               </div>
+
+                              <h3
+                                className={`text-lg font-bold ${
+                                  task.completed
+                                    ? "text-slate-400 line-through"
+                                    : "text-slate-800"
+                                }`}
+                              >
+                                {task.title}
+                              </h3>
+
+                              {task.description && (
+                                <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                                  {task.description}
+                                </p>
+                              )}
 
                             </div>
 
-                            <h3
-                              className={`text-xl font-semibold ${
-                                task.completed
-                                  ? "text-slate-500 line-through"
-                                  : "text-white"
+                            <span
+                              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${
+                                getUrgencyStyle(
+                                  task.urgency
+                                )
                               }`}
                             >
-                              {task.title}
-                            </h3>
+                              {task.urgency}
+                            </span>
 
-                            {task.description && (
-                              <p className="mt-2 text-sm leading-6 text-slate-400">
-                                {task.description}
-                              </p>
+                          </div>
+
+                          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+
+                            {task.date && (
+                              <DashboardField
+                                label="Date"
+                                value={task.date}
+                              />
+                            )}
+
+                            {task.time && (
+                              <DashboardField
+                                label="Time"
+                                value={task.time}
+                              />
+                            )}
+
+                            {task.source && (
+                              <DashboardField
+                                label="Source"
+                                value={task.source}
+                              />
                             )}
 
                           </div>
 
-                        </div>
+                          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
 
-
-                        <div className="mt-5 grid gap-4 border-t border-slate-800 pt-5 sm:grid-cols-2">
-
-                          {task.date && (
-                            <DashboardField
-                              label="Due"
-                              value={
-                                task.date
+                            <button
+                              onClick={() =>
+                                toggleTask(task.id)
                               }
-                            />
-                          )}
+                              className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                                task.completed
+                                  ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                  : "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600"
+                              }`}
+                            >
+                              {task.completed
+                                ? "✓ Completed"
+                                : "Mark as Complete"}
+                            </button>
 
-                          {task.time && (
-                            <DashboardField
-                              label="Time"
-                              value={
-                                task.time
+                            <button
+                              onClick={() =>
+                                deleteTask(task.id)
                               }
-                            />
-                          )}
+                              className="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                            >
+                              Delete
+                            </button>
 
-                          {task.source && (
-                            <DashboardField
-                              label="Source"
-                              value={
-                                task.source
-                              }
-                            />
-                          )}
-
-                          {task.action && (
-                            <DashboardField
-                              label="Action"
-                              value={
-                                task.action
-                              }
-                            />
-                          )}
+                          </div>
 
                         </div>
-
-
-                        {/* Complete */}
-
-                        <button
-                          onClick={() =>
-                            toggleTask(
-                              task.id
-                            )
-                          }
-                          className={`mt-6 w-full rounded-xl px-5 py-3 font-semibold transition ${
-                            task.completed
-                              ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                              : "bg-green-600 text-white hover:bg-green-500"
-                          }`}
-                        >
-                          {task.completed
-                            ? "✓ Completed — Mark as Pending"
-                            : "Mark as Complete"}
-                        </button>
-
-
-                        {/* Delete */}
-
-                        <button
-                          onClick={() =>
-                            deleteTask(
-                              task.id
-                            )
-                          }
-                          className="mt-2 w-full rounded-xl border border-red-900/50 bg-red-950/20 px-5 py-3 font-semibold text-red-400 transition hover:bg-red-950/40"
-                        >
-                          🗑️ Delete Task
-                        </button>
-
-                      </div>
-
-                    );
-                  })}
+                      );
+                    })}
 
                 </div>
 
-              </section>
+                <button
+                  onClick={() =>
+                    setActivePage("actions")
+                  }
+                  className="mt-4 w-full rounded-xl border border-violet-100 bg-white px-4 py-3 text-sm font-semibold text-violet-600 shadow-sm transition hover:bg-violet-50 sm:hidden"
+                >
+                  View all actions →
+                </button>
 
+              </section>
             )}
 
-
-            {/* =========================
-                FEATURES
-            ========================== */}
-
+            {/* FEATURES */}
             <section className="mt-20 grid gap-5 sm:grid-cols-3">
 
               <Feature
@@ -1351,368 +1175,311 @@ export default function Home() {
               />
 
               <Feature
-                icon="✅"
+                icon="✨"
                 title="Act"
-                description="Turn extracted information into useful actions."
+                description="Turn extracted information into useful, organized actions."
               />
 
             </section>
-
           </>
         )}
 
-
-        {/* =========================
-            MY ACTIONS PAGE
-        ========================== */}
-
+        {/* MY ACTIONS PAGE */}
         {activePage === "actions" && (
+          <>
+            <section>
 
-          <section className="mx-auto w-full max-w-4xl">
+              <div className="mb-10">
 
-            {/* Dashboard Header */}
-
-            <div className="mb-10">
-
-              <p className="text-sm font-medium text-blue-400">
-                YOUR WORKSPACE
-              </p>
-
-              <h1 className="mt-2 text-4xl font-bold">
-                My Actions
-              </h1>
-
-              <p className="mt-3 text-slate-400">
-                Everything you've extracted from your screenshots.
-              </p>
-
-            </div>
-
-
-            {/* Statistics */}
-
-            <div className="mb-10 grid gap-4 sm:grid-cols-3">
-
-              <StatCard
-                label="Total"
-                value={
-                  tasks.length
-                }
-                icon="📋"
-              />
-
-              <StatCard
-                label="Pending"
-                value={
-                  pendingCount
-                }
-                icon="⏳"
-              />
-
-              <StatCard
-                label="Completed"
-                value={
-                  completedCount
-                }
-                icon="✅"
-              />
-
-            </div>
-
-
-            {/* No tasks */}
-
-            {tasks.length === 0 ? (
-
-              <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-12 text-center">
-
-                <div className="text-4xl">
-                  📭
+                <div className="mb-4 inline-flex items-center rounded-full border border-violet-100 bg-white px-4 py-2 text-sm font-medium text-violet-600 shadow-sm">
+                  <span className="mr-2">
+                    ✨
+                  </span>
+                  Your action dashboard
                 </div>
 
-                <h2 className="mt-4 text-xl font-semibold">
-                  No actions yet
-                </h2>
+                <h1 className="text-4xl font-bold tracking-tight text-slate-800 sm:text-5xl">
+                  My Actions
+                </h1>
 
-                <p className="mt-2 text-slate-400">
-                  Upload a screenshot and let AI find something actionable.
+                <p className="mt-3 max-w-2xl text-base leading-7 text-slate-500">
+                  Everything you've extracted from
+                  your screenshots, organized in one
+                  place.
                 </p>
-
-                <button
-                  onClick={() =>
-                    setActivePage(
-                      "home"
-                    )
-                  }
-                  className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-medium transition hover:bg-blue-500"
-                >
-                  Analyze Screenshot
-                </button>
 
               </div>
 
-            ) : (
+              {/* STATISTICS */}
+              <div className="grid gap-4 sm:grid-cols-3">
 
-              <div className="space-y-4">
+                <StatCard
+                  label="Total"
+                  value={tasks.length}
+                  icon="📊"
+                />
 
-                {tasks.map((task) => (
+                <StatCard
+                  label="Pending"
+                  value={pendingCount}
+                  icon="⏳"
+                />
 
-                  <div
-                    key={task.id}
-                    className={`rounded-2xl border bg-slate-900 p-6 transition ${
-                      task.completed
-                        ? "border-slate-800 opacity-70"
-                        : "border-slate-700"
-                    }`}
+                <StatCard
+                  label="Completed"
+                  value={completedCount}
+                  icon="✓"
+                />
+
+              </div>
+
+              {/* EMPTY STATE */}
+              {tasks.length === 0 ? (
+                <div className="mt-10 rounded-[2rem] border border-dashed border-violet-200 bg-white p-12 text-center shadow-sm">
+
+                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-violet-50 text-4xl">
+                    📭
+                  </div>
+
+                  <h2 className="mt-5 text-2xl font-bold text-slate-800">
+                    No actions yet
+                  </h2>
+
+                  <p className="mx-auto mt-2 max-w-md text-slate-500">
+                    Upload a screenshot and let AI
+                    find something actionable for you.
+                  </p>
+
+                  <button
+                    onClick={() =>
+                      setActivePage("home")
+                    }
+                    className="mt-7 rounded-xl bg-violet-500 px-6 py-3 font-semibold text-white shadow-md shadow-violet-100 transition hover:bg-violet-600"
                   >
+                    Analyze Screenshot
+                  </button>
 
-                    {/* Task header */}
+                </div>
+              ) : (
+                <div className="mt-10 space-y-5">
 
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  {tasks.map((task) => {
 
-                      <div className="min-w-0">
+                    const typeStyle =
+                      getTypeStyle(
+                        task.type || "task"
+                      );
 
-                        <div className="flex flex-wrap items-center gap-2">
+                    return (
+                      <div
+                        key={task.id}
+                        className={`rounded-[1.75rem] border bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6 ${
+                          task.completed
+                            ? "border-slate-100"
+                            : "border-violet-100"
+                        }`}
+                      >
+
+                        {/* CARD HEADER */}
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+                          <div className="min-w-0">
+
+                            <div
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
+                                typeStyle.badge
+                              }`}
+                            >
+                              <span>
+                                {typeStyle.icon}
+                              </span>
+
+                              <span>
+                                {task.type || "TASK"}
+                              </span>
+                            </div>
+
+                            <h2
+                              className={`mt-3 text-xl font-bold ${
+                                task.completed
+                                  ? "text-slate-400 line-through"
+                                  : "text-slate-800"
+                              }`}
+                            >
+                              {task.title}
+                            </h2>
+
+                            {task.description && (
+                              <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-500">
+                                {task.description}
+                              </p>
+                            )}
+
+                          </div>
 
                           <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
-                              getTypeStyle(
-                                "task"
-                              ).badge
+                            className={`w-fit rounded-full border px-3 py-1.5 text-xs font-bold uppercase ${
+                              getUrgencyStyle(
+                                task.urgency
+                              )
                             }`}
                           >
-                            <span>
-                              {getTypeStyle(
-                                "task"
-                              ).icon}
-                            </span>
-
-                            TASK
-                          </span>
-
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              task.completed
-                                ? "bg-green-500/10 text-green-400"
-                                : "bg-yellow-500/10 text-yellow-400"
-                            }`}
-                          >
-                            {task.completed
-                              ? "Completed"
-                              : "Pending"}
-                          </span>
-
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                              task.urgency
-                                .toLowerCase() ===
-                              "high"
-                                ? "bg-red-500/10 text-red-400"
-                                : task.urgency
-                                      .toLowerCase() ===
-                                    "medium"
-                                  ? "bg-yellow-500/10 text-yellow-400"
-                                  : "bg-green-500/10 text-green-400"
-                            }`}
-                          >
-                            {task.urgency ||
-                              "Low"}
+                            {task.urgency}
                           </span>
 
                         </div>
 
-                        <h2
-                          className={`mt-3 text-xl font-semibold ${
-                            task.completed
-                              ? "text-slate-500 line-through"
-                              : "text-white"
-                          }`}
-                        >
-                          {task.title}
-                        </h2>
+                        {/* DETAILS */}
+                        <div className="mt-6 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4">
 
-                        {task.description && (
-                          <p className="mt-2 leading-6 text-slate-400">
-                            {task.description}
-                          </p>
-                        )}
+                          <DashboardField
+                            label="Date"
+                            value={
+                              task.date ||
+                              "Not specified"
+                            }
+                          />
+
+                          <DashboardField
+                            label="Time"
+                            value={
+                              task.time ||
+                              "Not specified"
+                            }
+                          />
+
+                          <DashboardField
+                            label="Source"
+                            value={
+                              task.source ||
+                              "Unknown"
+                            }
+                          />
+
+                          <DashboardField
+                            label="Action"
+                            value={
+                              task.action ||
+                              "Not specified"
+                            }
+                          />
+
+                        </div>
+
+                        {/* ACTION BUTTONS */}
+                        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+
+                          <button
+                            onClick={() =>
+                              toggleTask(task.id)
+                            }
+                            className={`flex-1 rounded-xl px-5 py-3 font-semibold transition ${
+                              task.completed
+                                ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                : "bg-emerald-500 text-white shadow-sm hover:bg-emerald-600"
+                            }`}
+                          >
+                            {task.completed
+                              ? "✓ Completed — Mark Pending"
+                              : "Mark as Complete"}
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              deleteTask(task.id)
+                            }
+                            className="rounded-xl border border-slate-200 px-6 py-3 font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                          >
+                            🗑 Delete
+                          </button>
+
+                        </div>
 
                       </div>
+                    );
+                  })}
 
-                    </div>
+                </div>
+              )}
 
-
-                    {/* Task information */}
-
-                    <div className="mt-6 grid gap-4 border-t border-slate-800 pt-5 sm:grid-cols-2 lg:grid-cols-4">
-
-                      <DashboardField
-                        label="Due"
-                        value={
-                          task.date ||
-                          "Not specified"
-                        }
-                      />
-
-                      <DashboardField
-                        label="Time"
-                        value={
-                          task.time ||
-                          "Not specified"
-                        }
-                      />
-
-                      <DashboardField
-                        label="Source"
-                        value={
-                          task.source ||
-                          "Unknown"
-                        }
-                      />
-
-                      <DashboardField
-                        label="Action"
-                        value={
-                          task.action ||
-                          "Not specified"
-                        }
-                      />
-
-                    </div>
-
-
-                    {/* Buttons */}
-
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-
-                      <button
-                        onClick={() =>
-                          toggleTask(
-                            task.id
-                          )
-                        }
-                        className={`flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                          task.completed
-                            ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                            : "bg-green-600 text-white hover:bg-green-500"
-                        }`}
-                      >
-                        {task.completed
-                          ? "✓ Completed — Mark as Pending"
-                          : "Mark as Complete"}
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          deleteTask(
-                            task.id
-                          )
-                        }
-                        className="rounded-xl border border-slate-700 px-5 py-3 text-sm text-slate-400 transition hover:border-red-900 hover:bg-red-950/20 hover:text-red-400"
-                      >
-                        🗑 Delete
-                      </button>
-
-                    </div>
-
-                  </div>
-
-                ))}
-
-              </div>
-
-            )}
-
-          </section>
-
+            </section>
+          </>
         )}
 
-        {/* =========================
-            FOOTER
-        ========================== */}
+        {/* FOOTER */}
+        <footer className="mt-auto pt-20 text-center">
 
-        <footer className="mt-auto pt-20 text-center text-sm text-slate-600">
-          Screenshot → Understand → Extract → Action
+          <div className="mx-auto mb-4 h-px max-w-xl bg-gradient-to-r from-transparent via-violet-200 to-transparent" />
+
+          <p className="text-sm font-medium text-slate-400">
+            Screenshot
+            <span className="mx-2 text-violet-400">
+              →
+            </span>
+            Understand
+            <span className="mx-2 text-violet-400">
+              →
+            </span>
+            Extract
+            <span className="mx-2 text-violet-400">
+              →
+            </span>
+            Action
+          </p>
+
+          <p className="mt-2 text-xs text-slate-300">
+            AI-powered screenshot intelligence
+          </p>
+
         </footer>
 
       </div>
     </main>
   );
 }
-/* =========================
-   FILE TO BASE64
-========================== */
-
 function fileToBase64(
   file: File
 ): Promise<string> {
-  return new Promise(
-    (resolve, reject) => {
-      const reader =
-        new FileReader();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
 
-      reader.onload = () => {
-        const result =
-          reader.result;
+    reader.onload = () => {
+      const result = reader.result;
 
-        if (
-          typeof result !==
-          "string"
-        ) {
-          reject(
-            new Error(
-              "Could not read image."
-            )
-          );
-
-          return;
-        }
-
-        const base64 =
-          result.split(",")[1];
-
-        if (!base64) {
-          reject(
-            new Error(
-              "Could not convert image."
-            )
-          );
-
-          return;
-        }
-
-        resolve(base64);
-      };
-
-      reader.onerror = () => {
+      if (typeof result !== "string") {
         reject(
-          new Error(
-            "Could not read image."
-          )
+          new Error("Could not read image.")
         );
-      };
+        return;
+      }
 
-      reader.readAsDataURL(file);
-    }
-  );
+      const base64 = result.split(",")[1];
+
+      if (!base64) {
+        reject(
+          new Error("Could not convert image.")
+        );
+        return;
+      }
+
+      resolve(base64);
+    };
+
+    reader.onerror = () => {
+      reject(
+        new Error("Could not read image.")
+      );
+    };
+
+    reader.readAsDataURL(file);
+  });
 }
-
-
-/* =========================
-   CLEAN AI JSON
-========================== */
 
 function cleanJson(
   text: string
 ): string {
   return text
-    .replace(
-      /```json/g,
-      ""
-    )
-    .replace(
-      /```/g,
-      ""
-    )
+    .replace(/```json/gi, "")
+    .replace(/```/g, "")
     .trim();
 }
